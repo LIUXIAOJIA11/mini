@@ -38,7 +38,7 @@ void init_mem(char *filename)
     
     size_t inst_count = file_size / sizeof(uint32_t);
     
-    M = (uint32_t*)malloc(file_size);
+    M = (uint32_t*)malloc(file_size*sizeof(uint32_t));
 
     if(!M)fclose(file);
 
@@ -58,7 +58,7 @@ void ID(uint32_t inst)
             rd = (inst >> 7) & 0x1f;
             fun3 = (inst >> 12) & 0x03;
             rs1 = (inst >> 15) & 0x1f;
-            imm =(int32_t) (inst >> 20) ;
+            imm =(int32_t) inst >> 20 ;
         break;
 
         case 0x67:
@@ -77,7 +77,7 @@ void ID(uint32_t inst)
         break;
         case 0x37://lui
             rd = (inst >> 7) & 0x1f;
-            imm20 = (inst >> 12);
+            imm20 =(int32_t) (inst >> 12);
         break;
         case 0x03://lw lbu
             rd = (inst >> 7) & 0x1f;
@@ -111,7 +111,7 @@ void EX()
             {
                 R[rd] = R[rs1] + imm; 
             }
-            printf("r[rd] = %08x\n",R[rd]);
+            printf("r[rs1] %d+ imm%08xr[rd] = %08x\n",R[rs1],imm,R[rd]);
             printf("imm is %d",(int)imm);
         break;
 
@@ -158,15 +158,28 @@ void EX()
             printf("sw\n");        
             int16_t imm_s = imm4_0 | (imm11_5 << 5);
             printf("imm_s %d\n",imm_s);
-            uint32_t sumadd =(( (R[rs1] + imm_s))) /4;
+            uint32_t sumadd =(( (R[rs1] + imm_s))) ;
 
-            printf("%08x %08x\n",sumadd,R[rs1] + imm_s);
+            printf("datat%08x %08x %08x\n",R[rs2],sumadd,R[rs1] + imm_s);
             if(fun3 == 2)
             {
-               M[sumadd] = R[rs2]; 
+               M[sumadd/4] = R[rs2]; 
             }else if(fun3 == 0)
             {
-               M[sumadd] = R[rs2] & 0xff; 
+                uint8_t sel_sb=sumadd & 0x3;
+                if(sel_sb == 0)
+                {
+                     M[sumadd/4] = R[rs2] & 0xff; 
+                }else if(sel_sb == 1)
+                {
+                    M[sumadd/4] = (R[rs2] & 0xff) << 8; 
+                }else if(sel_sb == 2)
+                {
+                    M[sumadd/4] = (R[rs2] & 0xff) << 16; 
+                }else if(sel_sb == 3)
+                {
+                     M[sumadd/4] = (R[rs2] & 0xff) << 24; 
+                }
             }
         break;
              
@@ -191,7 +204,7 @@ int main(int argc,char *argv[])
 {
     
     init_mem("sum.bin");
-    int x=10;
+    int x=6000;
     while(x--){
     printf("PC is %x\n",PC);
         inst_cycle();
